@@ -1,5 +1,6 @@
 tokio-udp-receiver-benchmark - Throughput / Streams nb. - 1 grp
-	3000	4000	4250	4500	5000	5125	5250
-no throttling	49.6	49.6	49.0	47.7
-throttling 20ms	49.7	49.7			49.7	49.2	48.3
+	3000	4000	4250	4500	5000	5125	5250	5500
+no throttling	49.6	49.7	48.4	46.4
+throttling 20ms	49.8	49.8				49.7	49.2	46.7
+
 

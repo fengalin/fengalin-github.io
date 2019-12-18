@@ -60,7 +60,7 @@ not that powerful unfortunately:
 
   - CPU: Intel Core i5 - 7200U @ 2.5GHz, 2 physical cores, SMT disabled.
   - OS: Fedora 31 up to date as of 2019/12/16.
-  - Kernel: `Linux 5.3.15-300.fc31.x86_64`.
+  - Kernel: Linux `5.3.16-300.fc31.x86_64`.
   - Scaling governor: `performance`.
   - Max. file descriptors: 30,000 (`ulimit -Sn 30000`).
   - RAM: 12GB DDR4 @ 2,400 MHz.
@@ -248,6 +248,6 @@ The following next steps are identified:
 [`GStreamer`]: https://gstreamer.freedesktop.org/
 [`tokio`]: https://github.com/tokio-rs/tokio
 [`GstPad`]: https://gstreamer.freedesktop.org/documentation/gstreamer/gstpad.html?gi-language=c
-[`tokio` `0.2.2 + throttling`]: https://github.com/fengalin/tokio/tree/330dd3a55d4d09548492ebe2b5fdd473b4842cb2
+[`tokio` `0.2.2 + throttling`]: https://github.com/fengalin/tokio/tree/aa0d49be4d2b7e97f2db31e1b3ca4909f8962e9c
 [`tokio-udp-receiver-benchmark`]: https://github.com/sdroege/tokio-udp-receiver-benchmark
 [modified version of `tokio-udp-receiver-benchmark`]: https://github.com/fengalin/tokio-udp-receiver-benchmark/tree/5e3a6ba2d81dda6a0f470eee1c46d380f6bf1a50
