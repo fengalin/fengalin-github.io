@@ -20,13 +20,18 @@ featured functions that gave control on the iterations of the executor:
 
 Thanks to these features the framework could benefit from the `tokio` executor
 while implementing a throttling strategy. The throttling strategy consists in
-grouping tasks and I/O pollings by forcing the thread to sleep during a short
-duration. The benefit are a more efficient use of the CPU and a wider bandwidth.
+grouping tasks, timers and I/O handling by forcing the thread to sleep during a
+short duration. For use cases where a large number of events are to be handled
+randomly (e.g. 1,000 live multimedia streams), this induces more efficient use
+of the CPU and wider bandwidth.
 
 Since the throttling strategy introduces pauses in the execution thread, timers
 need a special treatment so that they are fired close enough to their target
 instant. In order to avoid timers from being triggered too late,
 `gst-plugin-threadshare` implements its own timers management.
+
+See [this blog post](https://coaxion.net/blog/2018/04/improving-gstreamer-performance-on-a-high-number-of-network-streams-by-sharing-threads-between-elements-with-rusts-tokio-crate/)
+for a more in-depth explanation of this strategy.
 
 Two solutions are considered for `gst-plugin-threadshare` to keep up with
 `tokio` new versions (see [this thread](https://github.com/tokio-rs/tokio/issues/1887)):
@@ -50,8 +55,8 @@ implementations for solution (1).
 
 The goal of this evaluation is twofold:
 
-  1. Assess the impact of recent changes in `gst-plugin-threadshare`.
-  2. Support throttling as an approach to reduce CPU load for `tokio`'s executor.
+  1. Support throttling as an approach to reduce CPU load for `tokio`'s executor.
+  2. Assess the impact of recent changes in `gst-plugin-threadshare`.
 
 ## Conditions
 
@@ -59,7 +64,7 @@ The evaluation was conducted on the most powerful setup I could find, which is
 not that powerful unfortunately:
 
   - CPU: Intel Core i5 - 7200U @ 2.5GHz, 2 physical cores, SMT disabled.
-  - OS: Fedora 31 up to date as of 2019/12/16.
+  - OS: Fedora 31 up to date as of 2019/12/17.
   - Kernel: Linux `5.3.16-300.fc31.x86_64`.
   - Scaling governor: `performance`.
   - Max. file descriptors: 30,000 (`ulimit -Sn 30000`).
@@ -82,6 +87,38 @@ It would be interesting to conduct the tests on a more powerful setup so as to
 get a better idea of the actual throttling duration that could be used on the
 target machines.
 
+## Testing `tokio` throttling
+
+[`tokio-udp-receiver-benchmark`] was created to demonstrate the benefit of the
+throttling strategy on `tokio` without the `GStreamer` overhead. This project
+uses a set of UDP sender & receiver with control on the streams number and
+throttling duration.
+
+The tests were conducted on [`tokio` `0.2.4 + throttling`] branch with a
+[modified version of `tokio-udp-receiver-benchmark`]. The modified version
+prints the throughput reached by a single port. Only one port was used in order
+to avoid the need for synchronization primitives on a shared counter. The counter
+is incremented upon receipt of a new packet during 20s after which the throughput
+is printed on screen.
+
+### Results
+
+The following plot shows the CPU load induced by the non-throttling and
+throttling `BasicScheduler` of [`tokio` `0.2.4 + throttling`].
+
+![`tokio` only CPU load](plots/tokio/tokio_only_cpu_load_throuput_cpu_load.png?raw=true "`tokio` only CPU load")
+
+With this tests, the benefit on CPU load of throttling appears immediately.
+
+![`tokio` only throughput](plots/tokio/tokio_only_throuput_throughput.png?raw=true "`tokio` only throughput")
+
+The sender emits one buffer on each stream every 20ms. This means that one port
+of the receiver can receive at most 50 buffers per second.
+
+Despite the reduced CPU load, the throttling version can handle significantly
+more streams than the non-throttling version before the bandwidth starts
+narrowing.
+
 ## Comparison of `gst-plugin-threadshare` versions
 
 In order to benefit from the changes in the `Future` / `async` Rust ecosystem,
@@ -90,15 +127,15 @@ either `tokio` version upgrades or framework reworks. In this evaluation, we
 will compare the following versions which should allow assessing the impact of
 the different phases:
 
-| Name                | tokio         | Futures        | Framework         | Repo. |
-| ------------------- | ------------- | -------------- | ----------------- | ----- |
-| 0.1 (master)        | 0.1.22        | 0.1            | Initial model     | [link](https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs/tree/f638b0eef7155e9bf40fb315284920b3d5eb034e) | 
-| 0.2.0.alpha.6 prev. | 0.2.0.alpha.6 | 0.3.0-alpha.19 | Initial model     | [link](https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs/tree/908fa74132dc7935e40a55473ab24298a066c259) |
-| 0.2.0.alpha.6 Pad   | 0.2.0.alpha.6 | 0.3.0-alpha.19 | Pad wrapper model | [link](https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs/tree/80a01f4754a0ec7d1b4756d7755fcdeff6d50928) |
-| 0.2.2 + throttling  | 0.2.2 + thrtl | 0.3.1          | Pad wrapper model | [link](https://gitlab.freedesktop.org/fengalin/gst-plugins-rs/tree/acce02073550ec4e7f065e48e13511ee1cc6db26) |
+| Name                | tokio         | Futures        | Design      | Repo. |
+| ------------------- | ------------- | -------------- | ----------- | ----- |
+| 0.1 (master)        | 0.1.22        | 0.1            | Initial     | [link](https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs/tree/f638b0eef7155e9bf40fb315284920b3d5eb034e) | 
+| 0.2.0.alpha.6 prev. | 0.2.0.alpha.6 | 0.3.0-alpha.19 | Initial     | [link](https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs/tree/908fa74132dc7935e40a55473ab24298a066c259) |
+| 0.2.0.alpha.6 Pad   | 0.2.0.alpha.6 | 0.3.0-alpha.19 | Pad wrapper | [link](https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs/tree/80a01f4754a0ec7d1b4756d7755fcdeff6d50928) |
+| 0.2.2 + throttling  | 0.2.2 + thrtl | 0.3.1          | Pad wrapper | [link](https://gitlab.freedesktop.org/fengalin/gst-plugins-rs/tree/acce02073550ec4e7f065e48e13511ee1cc6db26) |
 
-The Pad wrapper model introduces an API similar to `GStreamer`'s [`GstPad`] type,
-except that it uses `Future`s whenever possible.
+The Pad wrapper design introduces an API similar to `GStreamer`'s [`GstPad`]
+type, except that it uses `Future`s whenever possible.
 
 ### Tools
 
@@ -194,47 +231,11 @@ of the throttling strategy.
 At 2,500 streams, only `0.2.2 + throttling` is able to benefit from the
 throttling strategy on this configuration.
 
-## Testing `tokio` throttling
-
-`tokio-udp-receiver-benchmark` was created to demonstrate the benefit of the
-throttling strategy on `tokio` without the `GStreamer` overhead. This project
-uses the same approach as the tests above: a set of UDP sender & receiver with
-control on the streams number and throttling duration.
-
-The tests were conducted on [`tokio` `0.2.2 + throttling`] branch with a
-[modified version of `tokio-udp-receiver-benchmark`]. The modified version
-prints the throughput reached by a single port. Only one port was used in order
-to avoid the need for synchronization primitives on a shared counter. The counter
-is incremented upon receipt of a new packet during 20s after which the throughput
-is printed on screen.
-
-### Results
-
-The following plot shows the CPU load induced by the non-throttling and
-throttling `BasicScheduler` of [`tokio` `0.2.2 + throttling`].
-
-![`tokio` only CPU load](plots/tokio/tokio_only_cpu_load_throuput_cpu_load.png?raw=true "`tokio` only CPU load")
-
-With this tests, the benefit on CPU load of throttling appears immediately. But,
-it would be interesting to check that the throughput doesn't suffer from the
-thread forced pauses.
-
-![`tokio` only throughput](plots/tokio/tokio_only_throuput_throughput.png?raw=true "`tokio` only throughput")
-
-The sender emits one buffer on each stream every 20ms. This means that one port
-of the receiver can receive at most 50 buffers per second.
-
-Despite the reduced CPU load, the throttling version can handle significantly
-more streams than the non-throttling version before the throughput starts to
-decline.
-
 ## Next steps
 
 The following next steps are identified:
 
-  - Cleanup the implementation of [`tokio` `0.2.2 + throttling`]
-    and rebase on master.
-  - Propose [`tokio` `0.2.2 + throttling`] for inclusion in upstream `tokio`.
+  - Propose [`tokio` `0.2.4 + throttling`] for inclusion in upstream `tokio`.
   - Perform similar tests on `gst-plugin-threadshare` with additional
     `{ts-}Queue`s in the pipeline so that the evaluation doesn't rely mostly
     on I/O.
@@ -248,6 +249,6 @@ The following next steps are identified:
 [`GStreamer`]: https://gstreamer.freedesktop.org/
 [`tokio`]: https://github.com/tokio-rs/tokio
 [`GstPad`]: https://gstreamer.freedesktop.org/documentation/gstreamer/gstpad.html?gi-language=c
-[`tokio` `0.2.2 + throttling`]: https://github.com/fengalin/tokio/tree/aa0d49be4d2b7e97f2db31e1b3ca4909f8962e9c
+[`tokio` `0.2.4 + throttling`]: https://github.com/fengalin/tokio/tree/12574ec03dfac4772b5b2142067be7b5c5009ea4
 [`tokio-udp-receiver-benchmark`]: https://github.com/sdroege/tokio-udp-receiver-benchmark
 [modified version of `tokio-udp-receiver-benchmark`]: https://github.com/fengalin/tokio-udp-receiver-benchmark/tree/5e3a6ba2d81dda6a0f470eee1c46d380f6bf1a50
