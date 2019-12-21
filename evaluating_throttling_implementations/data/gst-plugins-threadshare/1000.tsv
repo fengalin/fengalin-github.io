@@ -1,0 +1,8 @@
+CPU load / Throttling duration - 1,000 streams
+		1 group		2 groups
+		no-throttling	20ms	no-throttling	20ms
+udpsrc	55
+0.1.0 initial design		44	41	52	52
+0.2.0.alpha.6 Pad		44	40	53	51
+0.2.5 + throttling		43	41	55	53
+

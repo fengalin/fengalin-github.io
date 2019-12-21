@@ -1,8 +1,8 @@
-CPU load / Throttling dur. - 2,000 streams - 1 group
-	0	10	20	30	40	50	60	70	80	90
-udpsrc	80.0
-0.1 (master)	91.9	91.3	87.7	86.5	82.2	81.9	81.8	78.5	77.2	76.8
-0.2.0.alpha.6 prev.	94.2	93.9	91.7	88.8	87.2	85.0	87.2	84.5	82.0	81.0
-0.2.0.alpha.6 Pad	99.8	99.8	99.8	99.8	99.8	99.8	99.8	99.8	99.8	99.8
-0.2.2 + throttling	99.7	98.0	90.1	82.5	78.3	75.3	73.9	71.7	71.1	70.7
+CPU load / Throttling duration - 2,000 streams
+		1 group		2 groups
+		no-throttling	20ms	no-throttling	20ms
+udpsrc	110
+0.1.0 initial design		80	72	105	93
+0.2.0.alpha.6 Pad		79	74	107	96
+0.2.5 + throttling		79	74	105	85
 
