@@ -151,6 +151,9 @@ The user can configure the receiver with the following parameters:
 | Groups     | Threads to spawn         | number (0..)            | `ts-udpsrc` only |
 | Throttling | Max. throttling duration | duration (ms)           | `ts-udpsrc` only |
 
+When using e.g. 2 groups, the streams are distributed on 2 threads, which means
+that the load can be balanced on 2 CPU cores.
+
 Example (last parameter is not used):
 
 ```
