@@ -3,13 +3,14 @@
 ## Context
 
 [`gst-plugin-threadshare`] is a framework and a collection of `GStreamer`
-plugins which are developped with the Rust programming language and use the
+elements which are developped with the Rust programming language and use the
 [`gstreamer-rs`] bindings to the [`GStreamer`] C-based libraries.
 
-The framework provides an execution evironment that allows plugins to share
-threads instead of spawning dedicated threads as they would do in the regular
-`GStreamer` model. This approach reduces context switches and system calls,
-thus lowering CPU load.
+In the regular `GStreamer` model, pipeline elements spawn there own threads to
+deal with asynchronous processing. Most of the time, these threads wait for
+something to happen which causes multiple overheads. The [`gst-plugin-threadshare`]
+model allows elements to share threads which reduces context switches and system
+calls, thus lowering CPU load.
 
 The framework executor uses the crate [`tokio`]. Until release `0.2.0`, `tokio`
 featured functions that gave control on the iterations of the executor:
@@ -22,16 +23,16 @@ Thanks to these features the framework could benefit from the `tokio` executor
 while implementing a throttling strategy. The throttling strategy consists in
 grouping tasks, timers and I/O handling by forcing the thread to sleep during a
 short duration. For use cases where a large number of events are to be handled
-randomly (e.g. 1,000 live multimedia streams), this induces more efficient use
-of the CPU and wider bandwidth.
+randomly (e.g. 2,000+ live multimedia streams), this induces an even more
+efficient use of the CPU and wider bandwidth.
 
 Since the throttling strategy introduces pauses in the execution thread, timers
 need a special treatment so that they are fired close enough to their target
 instant. In order to avoid timers from being triggered too late,
-`gst-plugin-threadshare` implements its own timers management.
+`gst-plugin-threadshare` implemented its own timers management.
 
 See [this blog post](https://coaxion.net/blog/2018/04/improving-gstreamer-performance-on-a-high-number-of-network-streams-by-sharing-threads-between-elements-with-rusts-tokio-crate)
-for a more in-depth explanation of this strategy.
+for a more in-depth explanation of the throttling strategy.
 
 Two solutions are considered for `gst-plugin-threadshare` to keep up with
 `tokio` new versions (see [this thread](https://github.com/tokio-rs/tokio/issues/1887)):
@@ -79,16 +80,16 @@ the benchmark actually starts processing data. All measurements were performed
 after at least one hour after the machine was turned on with CPU loaded.
 
 [`tokio-udp-receiver-benchmark`] was created to demonstrate the benefit of the
-throttling strategy on `tokio` without the `GStreamer` overhead. This project
-uses a set of UDP sender & receiver with control on the streams number and
-throttling duration.
+throttling strategy on `tokio` without `GStreamer` overhead. This project uses a
+set of UDP sender & receiver with control on the streams number and throttling
+duration.
 
 The tests were conducted on [`tokio` `0.2.5 + throttling`] branch with a
 [modified version of `tokio-udp-receiver-benchmark`]. The modified version
 prints the throughput reached by a single port. Only one port was used in order
-to avoid the need for synchronization primitives on a shared counter. The counter
-is incremented upon receipt of a new packet during 20s after which the throughput
-is printed on screen.
+to avoid the need for synchronization primitives on a shared counter.
+The counter is incremented upon receipt of a new packet during 20s after which
+the throughput is printed on screen.
 
 All executables are built before-hand in `release` version.
 
@@ -100,7 +101,6 @@ throttling `BasicScheduler` of [`tokio` `0.2.5 + throttling`].
 ![`tokio` only CPU load](plots/tokio/tokio_only_cpu_load_throuput_cpu_load.png?raw=true "`tokio` only CPU load")
 
 With this tests, the benefit on CPU load of throttling appears immediately.
-
 Note that increasing the throttling duration reduces CPU load, but also adds
 latency.
 
@@ -127,8 +127,9 @@ the different phases:
 | 0.2.0.alpha.6 Pad   | 0.2.0.alpha.6 | 0.3.0-alpha.19 | [link](https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs/tree/80a01f4754a0ec7d1b4756d7755fcdeff6d50928) |
 | 0.2.5 + throttling  | 0.2.5 + thrtl | 0.3.1          | [link](https://gitlab.freedesktop.org/fengalin/gst-plugins-rs/tree/0221524a1091cfea688f95805e37ad71b7f4778d) |
 
-The Pad wrapper design introduces an API similar to `GStreamer`'s [`GstPad`]
-type, except that it uses `Future`s whenever possible.
+The Pad wrapper design used in `0.2.0.alpha.6 Pad` & `0.2.5 + throttling`
+introduces an API similar to `GStreamer`'s [`GstPad`] type, except that it uses
+`Future`s whenever possible.
 
 The evaluation was conducted on a machine with the following characteristics:
 
