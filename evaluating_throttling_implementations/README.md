@@ -189,8 +189,6 @@ The following next steps are identified:
   - Perform similar tests on `gst-plugin-threadshare` with additional
     `{ts-}Queue`s in the pipeline so that the evaluation doesn't rely mostly
     on I/O.
-  - Check the benefit of using `lto` (link time optimization) when building
-    tools.
 
 [`gst-plugin-threadshare`]: https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs/tree/master/gst-plugin-threadshare
 [`gstreamer-rs`]: https://gitlab.freedesktop.org/gstreamer/gstreamer-rs
